@@ -1,4 +1,4 @@
-# Windows Switcher
+# Task & Desktop Switcher
 
 A better way to switch tasks and virtual desktops on Windows 11 when you have dozens of tabs and apps open. **Window Switcher** lets you pick the exact browser or File Explorer tab you need. **Desktop Switcher** lets you recognize your workspaces by their previews and jump straight to one.
 
@@ -10,7 +10,7 @@ A better way to switch tasks and virtual desktops on Windows 11 when you have do
 ## Get started
 
 1. Install [AutoHotkey v2](https://github.com/AutoHotkey/AutoHotkey/releases) on Windows 11.
-2. [Download the ZIP](https://github.com/GregWatto/windows-switcher/archive/refs/heads/main.zip) and extract it. You can also clone the repository with `git clone https://github.com/GregWatto/windows-switcher.git`.
+2. [Download the ZIP](https://github.com/GregWatto/task-desktop-switcher/archive/refs/heads/main.zip) and extract it. You can also clone the repository with `git clone https://github.com/GregWatto/task-desktop-switcher.git`.
 3. Double-click `WindowSwitcher.ahk` to start both switchers. Keep `DesktopSwitcher.ahk` and the `Lib` folder alongside it.
 4. Try **Alt+F12** to pick a window or **Win+Tab** to switch desktops. Create at least two virtual desktops in Windows Task View to try desktop switching.
 
