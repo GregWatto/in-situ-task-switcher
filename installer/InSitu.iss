@@ -4,6 +4,8 @@
 
 #define AppName "In Situ - Task Switcher"
 #define AppURL "https://github.com/GregWatto/in-situ-task-switcher"
+#define IconFile "..\assets\in-situ.ico"
+#define InstalledIcon "{app}\assets\in-situ.ico"
 #define Runtime "{app}\runtime\AutoHotkey64.exe"
 #define ScriptPath "{app}\WindowSwitcher.ahk"
 
@@ -25,7 +27,8 @@ ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
 CloseApplications=yes
 RestartApplications=no
-UninstallDisplayIcon={#Runtime}
+SetupIconFile={#IconFile}
+UninstallDisplayIcon={#InstalledIcon}
 WizardStyle=modern
 OutputDir=..\dist
 OutputBaseFilename=InSitu-Setup-{#AppVersion}-x64
@@ -41,13 +44,14 @@ Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"
 Source: "..\Lib\LICENSE"; DestDir: "{app}\Lib"
 Source: "..\LICENSES\VirtualDesktop-MIT.txt"; DestDir: "{app}\LICENSES"
+Source: "{#IconFile}"; DestDir: "{app}\assets"
 Source: "{#RuntimeDir}\AutoHotkey64.exe"; DestDir: "{app}\runtime"
 Source: "{#RuntimeDir}\license.txt"; DestDir: "{app}\LICENSES"; DestName: "AutoHotkey.txt"
 Source: "{#CompilerDir}\license.txt"; DestDir: "{app}\LICENSES"; DestName: "Inno-Setup.txt"
 
 [Icons]
-Name: "{group}\In Situ"; Filename: "{#Runtime}"; Parameters: "/CP65001 ""{#ScriptPath}"""; WorkingDir: "{app}"
-Name: "{group}\In Situ (Alt+Tab mode)"; Filename: "{#Runtime}"; Parameters: "/CP65001 ""{#ScriptPath}"" --alt-tab"; WorkingDir: "{app}"
+Name: "{group}\In Situ"; Filename: "{#Runtime}"; Parameters: "/CP65001 ""{#ScriptPath}"""; WorkingDir: "{app}"; IconFilename: "{#InstalledIcon}"
+Name: "{group}\In Situ (Alt+Tab mode)"; Filename: "{#Runtime}"; Parameters: "/CP65001 ""{#ScriptPath}"" --alt-tab"; WorkingDir: "{app}"; IconFilename: "{#InstalledIcon}"
 
 [Run]
 Filename: "{#Runtime}"; Parameters: "/CP65001 ""{#ScriptPath}"""; WorkingDir: "{app}"; Description: "Launch In Situ"; Flags: nowait postinstall skipifsilent

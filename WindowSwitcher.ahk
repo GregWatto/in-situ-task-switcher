@@ -7,6 +7,10 @@
 if A_Args.Length && A_Args[1] = "--exit"
     ExitApp()
 
+trayIconPath := A_ScriptDir "\assets\in-situ.ico"
+if FileExist(trayIconPath)
+    TraySetIcon(trayIconPath)
+
 A_MenuMaskKey := "vkE8"
 UseAltTab := A_Args.Length > 0 && A_Args[1] = "--alt-tab"
 Switcher := WindowSwitcher()
