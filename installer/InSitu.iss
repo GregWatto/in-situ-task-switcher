@@ -39,6 +39,7 @@ VersionInfoVersion={#AppVersion}
 [Files]
 Source: "..\WindowSwitcher.ahk"; DestDir: "{app}"
 Source: "..\DesktopSwitcher.ahk"; DestDir: "{app}"
+Source: "..\UpdateChecker.ahk"; DestDir: "{app}"
 Source: "..\Lib\UIA.ahk"; DestDir: "{app}\Lib"
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"
@@ -48,6 +49,12 @@ Source: "{#IconFile}"; DestDir: "{app}\assets"
 Source: "{#RuntimeDir}\AutoHotkey64.exe"; DestDir: "{app}\runtime"
 Source: "{#RuntimeDir}\license.txt"; DestDir: "{app}\LICENSES"; DestName: "AutoHotkey.txt"
 Source: "{#CompilerDir}\license.txt"; DestDir: "{app}\LICENSES"; DestName: "Inno-Setup.txt"
+
+[INI]
+Filename: "{app}\InSitu-version.ini"; Section: "In Situ"; Key: "Version"; String: "{#AppVersion}"
+
+[UninstallDelete]
+Type: files; Name: "{app}\InSitu-version.ini"
 
 [Icons]
 Name: "{group}\In Situ"; Filename: "{#Runtime}"; Parameters: "/CP65001 ""{#ScriptPath}"""; WorkingDir: "{app}"; IconFilename: "{#InstalledIcon}"

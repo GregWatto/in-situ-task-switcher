@@ -2,6 +2,7 @@
 #SingleInstance Force
 #Include Lib\UIA.ahk
 #Include DesktopSwitcher.ahk
+#Include UpdateChecker.ahk
 
 ; Setup uses this to replace and close the instance for this script path.
 if A_Args.Length && A_Args[1] = "--exit"
@@ -16,6 +17,8 @@ UseAltTab := A_Args.Length > 0 && A_Args[1] = "--alt-tab"
 Switcher := WindowSwitcher()
 Desktops := DesktopSwitcher(Switcher)
 A_IconTip := (UseAltTab ? "Window Switcher (Alt+Tab)" : "Window Switcher (Alt+F12)") " / Desktops (Win+Tab)"
+A_TrayMenu.Insert("1&", "Check for updates", CheckForUpdates)
+A_TrayMenu.Insert("2&")
 
 #HotIf !Desktops.HasSession()
 $!F12::Switcher.Cycle(1, true)
