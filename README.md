@@ -1,6 +1,8 @@
 # Task & Desktop Switcher
 
-A better way to switch tasks and virtual desktops on Windows 11 when you have dozens of tabs and apps open. **Window Switcher** lets you pick the exact browser or File Explorer tab you need. **Desktop Switcher** lets you recognize your workspaces by their previews and jump straight to one.
+Windows 11’s built-in **Alt+Tab** and **Win+Tab** show windows as separate thumbnails, pulling them out of the workspace where you left them. When you have dozens of apps and tabs open, it’s harder to spot the right one without the layout around it.
+
+**Task & Desktop Switcher** keeps that context visible. The task picker brings the highlighted window forward right where you left it, with browser and File Explorer tabs listed under their parent window. The desktop picker shows snapshots of each workspace, so you can recognize a desktop by how its windows are arranged and jump straight to it.
 
 | Switcher | Shortcut | What you get |
 | --- | --- | --- |
