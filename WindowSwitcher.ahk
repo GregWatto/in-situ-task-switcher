@@ -327,20 +327,19 @@ class WindowSwitcher {
 
             DllCall("gdi32\SelectObject", "Ptr", dc, "Ptr", this.rowFont, "Ptr")
             DllCall("gdi32\SetBkMode", "Ptr", dc, "Int", 1)
-            markerLeft := left + Round(row.markerOffset * scale)
             if row.favicon
-                this.DrawTabFavicon(dc, row.favicon, markerLeft, top, bottom)
+                this.DrawTabFavicon(dc, row.favicon, left + Round(78 * scale), top, bottom)
             if row.marker {
                 DllCall("gdi32\SetTextColor", "Ptr", dc, "UInt", this.ColorRef(this.theme.muted))
-                this.DrawRowText(dc, row.marker, markerLeft, top, right, bottom)
-                if row.window && !row.window.hasTabGroups
+                this.DrawRowText(dc, row.marker, left + Round((row.window ? 16 : 78) * scale), top, right, bottom)
+                if row.window
                     this.DrawRowText(dc, row.window.tabCount, left + Round(30 * scale), top,
                         left + Round(62 * scale), bottom)
             }
             if row.window
                 this.DrawWindowIcon(dc, row.window, left + Round(64 * scale), top, bottom)
             DllCall("gdi32\SetTextColor", "Ptr", dc, "UInt", this.ColorRef(this.theme.text))
-            this.DrawRowText(dc, row.title, left + Round((row.window ? 98 : row.markerOffset + 30) * scale), top,
+            this.DrawRowText(dc, row.title, left + Round((row.window ? 98 : 108) * scale), top,
                 right - Round(14 * scale), bottom)
         } finally {
             DllCall("gdi32\RestoreDC", "Ptr", dc, "Int", saved)
@@ -384,13 +383,10 @@ class WindowSwitcher {
             || y < NumGet(rect, 4, "Int") || y >= NumGet(rect, 12, "Int")
             return 0
 
-        detail := this.rowDetails[row]
-        x := (lParam & 0xFFFF) / this.dpiScale
-        toggle := detail.window ? detail.marker && x < 61
-            : detail.node.HasOwnProp("children") && x >= detail.markerOffset - 5 && x < detail.markerOffset + 25
-        this.SelectRow(session, row, !toggle)
-        if toggle {
-            if detail.node ? detail.node.expanded : session.index = session.expandedIndex
+        window := this.rowDetails[row].window
+        this.SelectRow(session, row)
+        if window && window.tabCount > 1 && (lParam & 0xFFFF) < Round(61 * this.dpiScale) {
+            if session.index = session.expandedIndex && (session.query || session.tabs.Length)
                 this.Collapse()
             else
                 this.Expand()
@@ -616,7 +612,7 @@ class WindowSwitcher {
                 eligible[hwnd] := {
                     hwnd: hwnd, pid: WinGetPID(hwnd), title: title,
                     topmost: !!(styles & 0x8),
-                    tabProvider: provider, tabCount: -1, hasTabGroups: false
+                    tabProvider: provider, tabCount: -1
                 }
                 originalOrder.Push(eligible[hwnd])
             }
@@ -666,10 +662,9 @@ class WindowSwitcher {
                 }
             }
             this.session := {
-                windows: windows, index: startAtTop ? 1 : index, selectedNode: 0, selectedRow: 1,
+                windows: windows, index: startAtTop ? 1 : index, tabIndex: 0,
                 origin: origin, originalOrder: originalOrder, previewedWindows: Map(),
-                restoredWindows: Map(), expandedIndex: 0, tabs: [], tabNodes: [], query: 0, status: "",
-                openedGroups: Map(),
+                restoredWindows: Map(), expandedIndex: 0, tabs: [], query: 0, status: "",
                 shown: false, canceled: false, altUpChecks: 0
             }
             SetTimer(this.releaseMonitor, 25)
