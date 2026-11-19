@@ -1,8 +1,8 @@
-# Task & Desktop Switcher
+# In Situ - Task Switcher
 
 Windows 11’s built-in **Alt+Tab** and **Win+Tab** show windows as separate thumbnails, pulling them out of the workspace where you left them. When you have dozens of apps and tabs open, it’s harder to spot the right one without the layout around it.
 
-**Task & Desktop Switcher** keeps that context visible. The task picker brings the highlighted window forward right where you left it, with browser and File Explorer tabs listed under their parent window. The desktop picker shows snapshots of each workspace, so you can recognize a desktop by how its windows are arranged and jump straight to it.
+**In Situ - Task Switcher** keeps that context visible. The task picker brings the highlighted window forward right where you left it, with browser and File Explorer tabs listed under their parent window. The desktop picker shows snapshots of each workspace, so you can recognize a desktop by how its windows are arranged and jump straight to it.
 
 | Switcher | Shortcut | What you get |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ Windows 11’s built-in **Alt+Tab** and **Win+Tab** show windows as separate thu
 ## Get started
 
 1. Install [AutoHotkey v2](https://github.com/AutoHotkey/AutoHotkey/releases) on Windows 11.
-2. [Download the ZIP](https://github.com/GregWatto/task-desktop-switcher/archive/refs/heads/main.zip) and extract it. You can also clone the repository with `git clone https://github.com/GregWatto/task-desktop-switcher.git`.
+2. [Download the ZIP](https://github.com/GregWatto/in-situ-task-switcher/archive/refs/heads/main.zip) and extract it. You can also clone the repository with `git clone https://github.com/GregWatto/in-situ-task-switcher.git`.
 3. Double-click `WindowSwitcher.ahk` to start both switchers. Keep `DesktopSwitcher.ahk` and the `Lib` folder alongside it.
 4. Try **Alt+F12** to pick a window or **Win+Tab** to switch desktops. Create at least two virtual desktops in Windows Task View to try desktop switching.
 
