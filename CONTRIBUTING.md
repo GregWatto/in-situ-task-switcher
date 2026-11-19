@@ -14,6 +14,16 @@ Start-Process -FilePath "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe" `
 
 An exit code of 0 means AutoHotkey loaded the entry point and its includes successfully.
 
+## Build the Windows installer
+
+Install [Inno Setup 7](https://jrsoftware.org/inno-setup/downloads). Run this from the repository root in PowerShell 7 with your path to `ISCC.exe`.
+
+```powershell
+.\installer\Build-Installer.ps1 -Version 0.1.0 -IsccPath "C:\Path\To\Inno Setup 7\ISCC.exe"
+```
+
+The build checks the bundled AutoHotkey archive against the upstream SHA-256 and writes `dist/InSitu-Setup-0.1.0-x64.exe`. Publish the corresponding AutoHotkey source archive alongside the installer on the release page.
+
 ## Manual checks on Windows 11
 
 - **Windows and tabs.** Open two browser or File Explorer tabs and a separate app, such as Notepad. From the separate app, open the window picker, expand the tab list, and select a tab. Check that the live preview follows and that releasing **Alt** commits the exact tab. Repeat with the mouse and keyboard.

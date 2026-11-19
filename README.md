@@ -11,10 +11,17 @@ Windows 11’s built-in **Alt+Tab** and **Win+Tab** show windows as separate thu
 
 ## Get started
 
+**[Download the Windows installer](https://github.com/GregWatto/in-situ-task-switcher/releases/latest)** for Windows 11 on x64 PCs. Run the setup file, then open **In Situ** from the Start menu. The installer includes AutoHotkey and sets up both pickers for your Windows account.
+
+- Press **Alt+F12** for the task picker and **Win+Tab** for the desktop picker. Create at least two virtual desktops in Windows Task View to try desktop switching.
+- Open **In Situ (Alt+Tab mode)** from the Start menu to use the task picker on **Alt+Tab** too. Open **In Situ** again to return to the default shortcut.
+- Choose **Exit** from the tray icon to stop both pickers. To remove the app, uninstall **In Situ - Task Switcher** from **Settings → Apps → Installed apps**.
+
+### Run from source
+
 1. Install [AutoHotkey v2](https://github.com/AutoHotkey/AutoHotkey/releases) on Windows 11.
 2. [Download the ZIP](https://github.com/GregWatto/in-situ-task-switcher/archive/refs/heads/main.zip) and extract it. You can also clone the repository with `git clone https://github.com/GregWatto/in-situ-task-switcher.git`.
 3. Double-click `WindowSwitcher.ahk` to start both switchers. Keep `DesktopSwitcher.ahk` and the `Lib` folder alongside it.
-4. Try **Alt+F12** to pick a window or **Win+Tab** to switch desktops. Create at least two virtual desktops in Windows Task View to try desktop switching.
 
 By default, Windows still handles **Alt+Tab**. To enable the window picker on **Alt+Tab** too, run this from the extracted folder in PowerShell. Adjust the executable path for a portable or custom AutoHotkey installation.
 
@@ -22,7 +29,7 @@ By default, Windows still handles **Alt+Tab**. To enable the window picker on **
 & "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe" ".\WindowSwitcher.ahk" --alt-tab
 ```
 
-Use **Exit** from the AutoHotkey tray icon to restore the Windows shortcuts. Launch the script without `--alt-tab` to return to the default binding.
+Launch the script without `--alt-tab` to return to the default binding.
 
 ## Window Switcher
 
