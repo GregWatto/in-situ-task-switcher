@@ -671,7 +671,7 @@ class WindowSwitcher {
                 windows: windows, index: startAtTop ? 1 : index, selectedNode: 0, selectedRow: 1,
                 origin: origin, originalOrder: originalOrder, previewedWindows: Map(),
                 restoredWindows: Map(), expandedIndex: 0, tabs: [], tabNodes: [], query: 0, status: "",
-                openedGroups: Map(),
+                openedGroups: Map(), previewGroup: 0,
                 shown: false, canceled: false, altUpChecks: 0
             }
             SetTimer(this.releaseMonitor, 25)
@@ -777,6 +777,8 @@ class WindowSwitcher {
 
     UpdateSelection(session, refreshPreview := true) {
         this.rows.Choose(session.selectedRow)
+        if refreshPreview && DllCall("IsWindowVisible", "Ptr", this.overlay.Hwnd)
+            this.UpdatePreview(session)
         window := session.windows[session.index]
         node := session.selectedNode
         hint := "Click or Up / Down: select     "
@@ -794,24 +796,36 @@ class WindowSwitcher {
         else if window.tabCount < 0
             hint .= "Right: look for tabs     "
         this.hint.Text := hint "Release Alt: keep selection     Esc: cancel"
-        if refreshPreview && DllCall("IsWindowVisible", "Ptr", this.overlay.Hwnd)
-            this.UpdatePreview(session)
     }
 
     UpdatePreview(session) {
         ; Finish switching before Alt release or Esc can clean up the session.
         Critical
         window := session.windows[session.index]
+        node := session.selectedNode
         element := this.SelectedTab(session)
-        if this.previewedTab && (!element || this.previewedTab.hwnd != window.hwnd)
+        group := node && node.HasOwnProp("children") ? node : 0
+        previousGroup := session.previewGroup
+        session.previewGroup := group
+        if previousGroup && previousGroup != group && !previousGroup.expanded
+            this.EndGroupPreview(session, previousGroup)
+        if this.previewedTab && (!node || this.previewedTab.hwnd != window.hwnd)
             this.RestorePreviewedTab()
         this.ActivateHighlighted(session, window)
         if WinWaitActive(window.hwnd,, 0.12) {
             this.RestoreMinimizedWindows(session, window.hwnd)
             this.RestoreWindowOrder(session, window.hwnd)
+            if group {
+                if !group.children.Length
+                    this.LoadGroup(session, window, group)
+                if group.children.Length
+                    element := group.children[1].element
+            }
         }
         if element
             this.PreviewTab(window, session.tabs, element)
+        else if group
+            this.RestorePreviewedTab()
 
         if window.tabCount < 0
             SetTimer(this.tabDiscoveryTimer, -35)
@@ -1276,6 +1290,25 @@ class WindowSwitcher {
         session.openedGroups.Clear()
     }
 
+    EndGroupPreview(session, group) {
+        if !session.openedGroups.Has(group.id)
+            return
+        entry := session.openedGroups[group.id]
+        this.RestorePreviewedTab()
+        if !this.SetBrowserGroupState(entry.window, group, 0)
+            return
+        session.openedGroups.Delete(group.id)
+        group.collapsedInBrowser := true
+        group.children := []
+        ; Collapsing the browser group removes its tab elements from UI Automation.
+        index := session.tabs.Length
+        while index {
+            if session.tabs[index].group = group.id
+                session.tabs.RemoveAt(index)
+            index--
+        }
+    }
+
     CaptureBrowserFavicons(window, tabs) {
         if tabs.Length < 2 || !WinActive(window.hwnd) || DllCall("IsHungAppWindow", "Ptr", window.hwnd)
             return
@@ -1414,6 +1447,7 @@ class WindowSwitcher {
         session.tabs := []
         session.tabNodes := []
         session.selectedNode := 0
+        session.previewGroup := 0
         session.expandedIndex := 0
         session.status := ""
     }

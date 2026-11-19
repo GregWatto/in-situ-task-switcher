@@ -51,7 +51,7 @@ Moving off a previewed tab restores the tab that was active before previewing it
 | Release **Alt** | Commit the highlighted window or tab. |
 | **Esc** | Cancel and restore the starting window and window order. |
 
-Microsoft Edge and Google Chrome show tab groups under their browser window, with member tabs nested inside. Opening a collapsed group in the picker may temporarily open it in the browser. The picker restores that group's collapsed state when you close the window's tab list or leave the picker, unless you commit a tab in that group with **Alt**. Group availability depends on what the browser exposes through Windows UI Automation. Site icons appear when the picker can read them from the visible horizontal tab strip.
+Microsoft Edge and Google Chrome show tab groups under their browser window, with member tabs nested inside. Highlight a group title to preview its first tab, even when the group's list is collapsed. If the picker opens a browser group for the preview, it collapses the group again when you move away from its title. Explicitly expanded groups stay open while you browse their tabs. The picker restores their original collapsed state when you close the window's tab list or leave the picker, unless you commit a tab in the group with **Alt**. Group availability depends on what the browser exposes through Windows UI Automation. Site icons appear when the picker can read them from the visible horizontal tab strip.
 
 File Explorer has dedicated tab detection. Other apps can expose tabs through Windows UI Automation. The picker shows a chevron when it detects at least two tabs or a tab group. A window remains selectable when its tabs are unavailable.
 
