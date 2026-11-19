@@ -44,14 +44,16 @@ Moving off a previewed tab restores the tab that was active before previewing it
 | **Alt+F12** | Open on the first row. Keep holding **Alt** and press **F12** again to cycle windows. |
 | **Alt+Tab** in opt-in mode | Open on the previous window. Keep holding **Alt** and press **Tab** again to cycle. A quick tap switches directly. |
 | **Shift** with either shortcut | Cycle windows in reverse. |
-| **↑** / **↓** | Move through windows and expanded tabs, wrapping at the ends. |
-| **→** or click the chevron | Expand a window's tabs. Press **→** again to highlight the first tab. |
-| **←** on an expanded window or tab | Collapse the tabs and highlight their window. Clicking the chevron also collapses the list. |
-| Click a row | Highlight the window or tab. |
+| **↑** / **↓** | Move through visible windows, tab groups, and tabs, wrapping at the ends. |
+| **→** or click the chevron | Expand a window or tab group. Press **→** again to highlight its first child. |
+| **←** or click an open chevron | Collapse an expanded window or tab group. From a tab, **←** collapses its parent and highlights it. |
+| Click a row | Highlight the window, group, or tab. |
 | Release **Alt** | Commit the highlighted window or tab. |
 | **Esc** | Cancel and restore the starting window and window order. |
 
-Microsoft Edge, Google Chrome, and File Explorer have dedicated tab detection. Edge and Chrome tabs show their site icons when the picker can read them from the visible horizontal tab strip. Other apps can expose tabs through Windows UI Automation. Coverage depends on the app and tab layout. For example, tabs inside a collapsed Edge group may be hidden from the picker. A window remains selectable when its tabs are unavailable. The chevron appears when the picker detects at least two tabs.
+Microsoft Edge and Google Chrome show tab groups under their browser window, with member tabs nested inside. Opening a collapsed group in the picker may temporarily open it in the browser. The picker restores that group's collapsed state when you close the window's tab list or leave the picker, unless you commit a tab in that group with **Alt**. Group availability depends on what the browser exposes through Windows UI Automation. Site icons appear when the picker can read them from the visible horizontal tab strip.
+
+File Explorer has dedicated tab detection. Other apps can expose tabs through Windows UI Automation. The picker shows a chevron when it detects at least two tabs or a tab group. A window remains selectable when its tabs are unavailable.
 
 The picker reads the Windows app theme and transparency setting at launch. Restart it to apply changes.
 
