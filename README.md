@@ -24,7 +24,11 @@ Use **Exit** from the AutoHotkey tray icon to restore the Windows shortcuts. Lau
 
 ## Window Switcher
 
-Windows appear in most-recently-used order. Highlighting a row brings its window forward while the picker stays open. A live thumbnail follows the highlighted window or tab. Moving off a previewed tab restores the tab that was active before previewing it. Releasing **Alt** on the tab keeps it selected.
+![Task picker showing several demo app windows, six browser tabs nested under their window, and a preview of the selected tab](docs/images/task-picker.jpg)
+
+Windows appear in most-recently-used order, with tabs nested under their parent window. Windows stay where you left them on screen and on their assigned desktops. Highlighting a window temporarily brings it forward for a live preview. As you move through the picker, previously previewed windows return to their place in the stack, so the workspace stays easy to navigate.
+
+Moving off a previewed tab restores the tab that was active before previewing it. Releasing **Alt** keeps the highlighted window or tab active. Pressing **Esc** restores the starting window and stack.
 
 | Input | Action |
 | --- | --- |
@@ -43,6 +47,8 @@ Microsoft Edge, Google Chrome, and File Explorer have dedicated tab detection. O
 The picker reads the Windows app theme and transparency setting at launch. Restart it to apply changes.
 
 ## Desktop Switcher
+
+![Desktop picker showing three sample workspaces named Planning, Writing, and Reference](docs/images/desktop-picker.jpg)
 
 Tap **Win+Tab** to return to the last active virtual desktop when Windows exposes that information. To choose another desktop, press **Win+Tab** and keep holding **Win** until the preview cards appear.
 
