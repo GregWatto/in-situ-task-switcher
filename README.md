@@ -24,7 +24,7 @@ Use **Exit** from the AutoHotkey tray icon to restore the Windows shortcuts. Lau
 
 ## Window Switcher
 
-![Task picker showing several demo app windows, six browser tabs nested under their window, and a preview of the selected tab](docs/images/task-picker.jpg)
+![Task picker showing five demo app windows, six expanded browser tabs with distinct favicons, and a preview of the selected tab](docs/images/task-picker.jpg)
 
 Windows appear in most-recently-used order, with tabs nested under their parent window. Windows stay where you left them on screen and on their assigned desktops. Highlighting a window temporarily brings it forward for a live preview. As you move through the picker, previously previewed windows return to their place in the stack, so the workspace stays easy to navigate.
 
@@ -42,7 +42,7 @@ Moving off a previewed tab restores the tab that was active before previewing it
 | Release **Alt** | Commit the highlighted window or tab. |
 | **Esc** | Cancel and restore the starting window and window order. |
 
-Microsoft Edge, Google Chrome, and File Explorer have dedicated tab detection. Other apps can expose tabs through Windows UI Automation. Coverage depends on the app and tab layout. For example, tabs inside a collapsed Edge group may be hidden from the picker. A window remains selectable when its tabs are unavailable. The chevron appears when the picker detects at least two tabs.
+Microsoft Edge, Google Chrome, and File Explorer have dedicated tab detection. Edge and Chrome tabs show their site icons when the picker can read them from the visible horizontal tab strip. Other apps can expose tabs through Windows UI Automation. Coverage depends on the app and tab layout. For example, tabs inside a collapsed Edge group may be hidden from the picker. A window remains selectable when its tabs are unavailable. The chevron appears when the picker detects at least two tabs.
 
 The picker reads the Windows app theme and transparency setting at launch. Restart it to apply changes.
 
