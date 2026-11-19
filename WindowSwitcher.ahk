@@ -117,6 +117,8 @@ class WindowSwitcher {
 
     Cleanup(*) {
         this.RestorePreviewedTab()
+        if this.session
+            this.RestoreBrowserGroups(this.session)
         this.ClearThumbnail()
         this.ReleaseIcons()
         if this.gdiplusToken
@@ -327,19 +329,20 @@ class WindowSwitcher {
 
             DllCall("gdi32\SelectObject", "Ptr", dc, "Ptr", this.rowFont, "Ptr")
             DllCall("gdi32\SetBkMode", "Ptr", dc, "Int", 1)
+            markerLeft := left + Round(row.markerOffset * scale)
             if row.favicon
-                this.DrawTabFavicon(dc, row.favicon, left + Round(78 * scale), top, bottom)
+                this.DrawTabFavicon(dc, row.favicon, markerLeft, top, bottom)
             if row.marker {
                 DllCall("gdi32\SetTextColor", "Ptr", dc, "UInt", this.ColorRef(this.theme.muted))
-                this.DrawRowText(dc, row.marker, left + Round((row.window ? 16 : 78) * scale), top, right, bottom)
-                if row.window
+                this.DrawRowText(dc, row.marker, markerLeft, top, right, bottom)
+                if row.window && !row.window.hasTabGroups
                     this.DrawRowText(dc, row.window.tabCount, left + Round(30 * scale), top,
                         left + Round(62 * scale), bottom)
             }
             if row.window
                 this.DrawWindowIcon(dc, row.window, left + Round(64 * scale), top, bottom)
             DllCall("gdi32\SetTextColor", "Ptr", dc, "UInt", this.ColorRef(this.theme.text))
-            this.DrawRowText(dc, row.title, left + Round((row.window ? 98 : 108) * scale), top,
+            this.DrawRowText(dc, row.title, left + Round((row.window ? 98 : row.markerOffset + 30) * scale), top,
                 right - Round(14 * scale), bottom)
         } finally {
             DllCall("gdi32\RestoreDC", "Ptr", dc, "Int", saved)
@@ -383,10 +386,13 @@ class WindowSwitcher {
             || y < NumGet(rect, 4, "Int") || y >= NumGet(rect, 12, "Int")
             return 0
 
-        window := this.rowDetails[row].window
-        this.SelectRow(session, row)
-        if window && window.tabCount > 1 && (lParam & 0xFFFF) < Round(61 * this.dpiScale) {
-            if session.index = session.expandedIndex && (session.query || session.tabs.Length)
+        detail := this.rowDetails[row]
+        x := (lParam & 0xFFFF) / this.dpiScale
+        toggle := detail.window ? detail.marker && x < 61
+            : detail.node.HasOwnProp("children") && x >= detail.markerOffset - 5 && x < detail.markerOffset + 25
+        this.SelectRow(session, row, !toggle)
+        if toggle {
+            if detail.node ? detail.node.expanded : session.index = session.expandedIndex
                 this.Collapse()
             else
                 this.Expand()
@@ -612,7 +618,7 @@ class WindowSwitcher {
                 eligible[hwnd] := {
                     hwnd: hwnd, pid: WinGetPID(hwnd), title: title,
                     topmost: !!(styles & 0x8),
-                    tabProvider: provider, tabCount: -1
+                    tabProvider: provider, tabCount: -1, hasTabGroups: false
                 }
                 originalOrder.Push(eligible[hwnd])
             }
@@ -662,9 +668,10 @@ class WindowSwitcher {
                 }
             }
             this.session := {
-                windows: windows, index: startAtTop ? 1 : index, tabIndex: 0,
+                windows: windows, index: startAtTop ? 1 : index, selectedNode: 0, selectedRow: 1,
                 origin: origin, originalOrder: originalOrder, previewedWindows: Map(),
-                restoredWindows: Map(), expandedIndex: 0, tabs: [], query: 0, status: "",
+                restoredWindows: Map(), expandedIndex: 0, tabs: [], tabNodes: [], query: 0, status: "",
+                openedGroups: Map(),
                 shown: false, canceled: false, altUpChecks: 0
             }
             SetTimer(this.releaseMonitor, 25)
@@ -730,19 +737,18 @@ class WindowSwitcher {
         for index, window in session.windows {
             expanded := index = session.expandedIndex
             indicator := ""
-            if window.tabCount > 1 {
-                indicator := expanded && (session.tabs.Length || session.query) ? Chr(0x25BE) : Chr(0x25B8)
-                labels.Push(indicator " " window.tabCount "  " window.title)
-            } else {
-                labels.Push("    " window.title)
-            }
-            details.Push({title: window.title, marker: indicator, window: window, favicon: 0})
-            if expanded {
-                for tab in session.tabs {
-                    marker := tab.favicon ? "" : Chr(8627)
-                    labels.Push("        " marker "  " tab.title)
-                    details.Push({title: tab.title, marker: marker, window: 0, favicon: tab.favicon})
-                }
+            if this.CanExpandTabs(window)
+                indicator := this.Chevron(expanded && (session.tabNodes.Length || session.query))
+            labels.Push(indicator " " window.title)
+            details.Push({title: window.title, marker: indicator, markerOffset: 16, window: window,
+                index: index, node: 0, parent: 0, favicon: 0})
+            if expanded
+                this.AppendTabRows(labels, details, session.tabNodes, index)
+        }
+        for number, row in details {
+            if row.index = session.index && row.node = session.selectedNode {
+                session.selectedRow := number
+                break
             }
         }
         this.rows.Delete()
@@ -753,21 +759,37 @@ class WindowSwitcher {
             SendMessage(0x0197, topRow, 0, this.rows.Hwnd) ; LB_SETTOPINDEX
     }
 
-    SelectedRow(session) {
-        if session.expandedIndex && session.index > session.expandedIndex
-            return session.index + session.tabs.Length
-        return session.index + session.tabIndex
+    Chevron(expanded) => expanded ? Chr(0x25BE) : Chr(0x25B8)
+
+    CanExpandTabs(window) => window.tabCount > 1 || window.hasTabGroups
+
+    AppendTabRows(labels, details, nodes, index, parent := 0, depth := 0) {
+        for node in nodes {
+            branch := node.HasOwnProp("children")
+            marker := branch ? this.Chevron(node.expanded) : (node.favicon ? "" : Chr(8627))
+            labels.Push(marker " " node.title)
+            details.Push({title: node.title, marker: marker, markerOffset: 78 + depth * 24,
+                window: 0, index: index, node: node, parent: parent, favicon: node.favicon})
+            if branch && node.expanded
+                this.AppendTabRows(labels, details, node.children, index, node, depth + 1)
+        }
     }
 
     UpdateSelection(session, refreshPreview := true) {
-        this.rows.Choose(this.SelectedRow(session))
+        this.rows.Choose(session.selectedRow)
         window := session.windows[session.index]
+        node := session.selectedNode
         hint := "Click or Up / Down: select     "
-        if session.index = session.expandedIndex && session.tabs.Length
+        if node && node.HasOwnProp("children") {
+            if node.status
+                hint .= node.status "     "
+            else
+                hint .= node.expanded ? "Left or chevron: collapse     " : "Right or chevron: expand     "
+        } else if node || (session.index = session.expandedIndex && session.tabNodes.Length)
             hint .= "Left or chevron: collapse     "
         else if session.index = session.expandedIndex && session.status
             hint .= session.status "     "
-        else if window.tabCount > 1
+        else if this.CanExpandTabs(window)
             hint .= "Right or chevron: expand     "
         else if window.tabCount < 0
             hint .= "Right: look for tabs     "
@@ -780,7 +802,7 @@ class WindowSwitcher {
         ; Finish switching before Alt release or Esc can clean up the session.
         Critical
         window := session.windows[session.index]
-        element := session.tabIndex ? session.tabs[session.tabIndex].element : 0
+        element := this.SelectedTab(session)
         if this.previewedTab && (!element || this.previewedTab.hwnd != window.hwnd)
             this.RestorePreviewedTab()
         this.ActivateHighlighted(session, window)
@@ -798,6 +820,11 @@ class WindowSwitcher {
         this.ClearThumbnail()
         this.previewWindow := window.hwnd
         this.ShowThumbnail(window.hwnd)
+    }
+
+    SelectedTab(session) {
+        node := session.selectedNode
+        return node && !node.HasOwnProp("children") ? node.element : 0
     }
 
     ActivateHighlighted(session, window) {
@@ -952,41 +979,53 @@ class WindowSwitcher {
     }
 
     Move(direction) {
+        Critical
         session := this.session
         if !session || session.canceled
             return
-        count := session.windows.Length + session.tabs.Length
-        row := Mod(this.SelectedRow(session) - 1 + direction + count, count) + 1
+        count := session.shown ? this.rowDetails.Length : session.windows.Length
+        selected := session.shown ? session.selectedRow : session.index
+        row := Mod(selected - 1 + direction + count, count) + 1
         this.SelectRow(session, row)
     }
 
-    SelectRow(session, row) {
-        expanded := session.expandedIndex
-        session.index := row
-        session.tabIndex := 0
-        if expanded && row > expanded {
-            if row <= expanded + session.tabs.Length {
-                session.index := expanded
-                session.tabIndex := row - expanded
-            } else {
-                session.index -= session.tabs.Length
-            }
-        }
-        if session.shown
-            this.UpdateSelection(session)
-        else
+    SelectRow(session, row, refreshPreview := true) {
+        if session.shown {
+            detail := this.rowDetails[row]
+            session.index := detail.index
+            session.selectedNode := detail.node
+            session.selectedRow := row
+            this.UpdateSelection(session, refreshPreview)
+        } else {
+            session.index := row
             this.Show(session)
+        }
     }
 
     Expand() {
+        Critical
         session := this.session
-        if !session || session.canceled || session.tabIndex
+        if !session || session.canceled
             return
         window := session.windows[session.index]
+        node := session.selectedNode
+        if node {
+            if !node.HasOwnProp("children")
+                return
+            if node.expanded {
+                this.Move(1)
+                return
+            }
+            if !node.children.Length
+                this.LoadGroup(session, window, node)
+            node.expanded := node.children.Length > 0
+            this.Render(session)
+            return
+        }
         if session.index = session.expandedIndex {
             if session.query
                 return
-            if session.tabs.Length {
+            if session.tabNodes.Length {
                 this.Move(1)
                 return
             }
@@ -1006,23 +1045,19 @@ class WindowSwitcher {
     LoadTabs(session, query, window) {
         if this.session != session || session.query != query || session.canceled
             return
-        tabs := []
-        for element in this.ReadTabElements(window) {
-            try {
-                title := element.Name
-                tabs.Push({element: element, title: title != "" ? title : "(Untitled tab)", favicon: 0})
-            }
-        }
-        if this.session = session && session.query = query && !session.canceled && tabs.Length > 1
+        snapshot := this.ReadTabs(window)
+        if this.session = session && session.query = query && !session.canceled && snapshot.tabs.Length > 1
             && this.gdiplusToken && (window.tabProvider = "chrome" || window.tabProvider = "edge")
-            try this.CaptureBrowserFavicons(window, tabs)
+            try this.CaptureBrowserFavicons(window, snapshot.tabs)
         Critical
         if this.session != session || session.query != query || session.canceled
             return
         session.query := 0
-        window.tabCount := tabs.Length
-        session.tabs := tabs.Length > 1 ? tabs : []
-        session.status := tabs.Length > 1 ? "" : "No other tabs. Window still selectable."
+        window.tabCount := snapshot.tabs.Length
+        window.hasTabGroups := snapshot.groups.Count > 0
+        session.tabs := snapshot.tabs
+        session.tabNodes := this.CanExpandTabs(window) ? snapshot.nodes : []
+        session.status := session.tabNodes.Length ? "" : "No other tabs. Window still selectable."
         this.Render(session)
     }
 
@@ -1047,13 +1082,24 @@ class WindowSwitcher {
         if !window
             return
 
-        count := this.ReadTabElements(window).Length
+        elements := this.ReadTabElements(window)
+        hasGroups := false
+        count := 0
+        for element in elements {
+            try {
+                if element.Type = UIA.Type.TabItem
+                    count++
+                else
+                    hasGroups := true
+            }
+        }
         Critical
         if this.session != session || session.canceled
             return
         if window.tabCount < 0 {
             window.tabCount := count
-            if count > 1 || window = session.windows[session.index]
+            window.hasTabGroups := hasGroups
+            if this.CanExpandTabs(window) || window = session.windows[session.index]
                 this.Render(session, false)
         }
         ; Yield between windows so quick switching never waits for a full scan.
@@ -1068,16 +1114,170 @@ class WindowSwitcher {
         return false
     }
 
-    ReadTabElements(window) {
+    ReadTabElements(window, includeUnderlines := false) {
         try {
             if WinGetPID(window.hwnd) = window.pid
-                return this.FindTabElements(UIA.ElementFromHandle(window.hwnd,, false), window)
+                return this.FindTabElements(UIA.ElementFromHandle(window.hwnd,, false), window, includeUnderlines)
         }
         return []
     }
 
+    ReadTabs(window) {
+        nodes := [], tabs := [], groups := Map()
+        underlines := []
+        elements := this.ReadTabElements(window, true)
+        for element in elements {
+            try {
+                if InStr(element.ClassName, "TabGroupUnderline")
+                    underlines.Push(element.BoundingRectangle)
+            }
+        }
+        group := 0
+        for element in elements {
+            try {
+                switch element.ClassName {
+                    case "TabGroupHeader", "TabGroupHeaderView", "EdgeTitleContainerView":
+                        if !element.IsExpandCollapsePatternAvailable
+                            continue
+                        title := Trim(element.Name)
+                        if window.tabProvider = "edge"
+                            title := RegExReplace(title, "i)\s+tab group\s+\(.*\)$")
+                        else
+                            title := RegExReplace(title, "\s+[–—]\s+\d+\s.*$")
+                        group := {element: element, id: element.RuntimeId, title: title != "" ? title : "Tab group",
+                            children: [], expanded: false, favicon: 0, status: "",
+                            collapsedInBrowser: element.ExpandCollapseExpandCollapseState = 0,
+                            containerId: element.ClassName = "TabGroupHeaderView" ? element.Parent.RuntimeId : "",
+                            bounds: element.BoundingRectangle, span: 0}
+                        nodes.Push(group)
+                        groups[group.id] := group
+                        continue
+                }
+                if element.Type != UIA.Type.TabItem
+                    continue
+                title := element.Name
+                tab := {element: element, title: title != "" ? title : "(Untitled tab)", favicon: 0, group: ""}
+                tabs.Push(tab)
+                if group && this.IsGroupMember(group, tab, underlines) {
+                    tab.group := group.id
+                    group.children.Push(tab)
+                } else {
+                    group := 0
+                    nodes.Push(tab)
+                }
+            }
+        }
+        return {nodes: nodes, tabs: tabs, groups: groups}
+    }
+
+    FindGroupSpan(header, rect, underlines) {
+        tolerance := 4 * this.dpiScale
+        for line in underlines {
+            if line.r <= line.l || line.b <= line.t
+                continue
+            ; Chromium exposes an underline spanning each group's header and
+            ; tabs. In the vertical strip it runs down the side of the group.
+            vertical := line.b - line.t > line.r - line.l
+            if vertical {
+                center := (rect.t + rect.b) / 2
+                if center >= line.t && center < line.b
+                    && line.t >= header.t - tolerance && line.t <= header.b + tolerance && line.b > header.b
+                    && line.l >= header.l - tolerance && line.r <= header.r + tolerance
+                    return {vertical: true, start: line.t, end: line.b}
+            } else if line.t >= header.t - tolerance && line.b <= header.b + tolerance {
+                center := (rect.l + rect.r) / 2
+                if center >= line.l && center < line.r
+                    && ((line.l > header.l && line.l < header.r && line.r > header.r)
+                        || (line.r > header.l && line.r < header.r && line.l < header.l))
+                    return {vertical: false, start: line.l, end: line.r}
+            }
+        }
+        return 0
+    }
+
+    IsGroupMember(group, tab, underlines) {
+        if group.collapsedInBrowser
+            return false
+        if group.containerId {
+            try return tab.element.Parent.RuntimeId = group.containerId
+        }
+        try {
+            rect := tab.element.BoundingRectangle
+            if rect.r > rect.l && rect.b > rect.t {
+                if !group.span
+                    group.span := this.FindGroupSpan(group.bounds, rect, underlines)
+                if group.span {
+                    center := group.span.vertical ? (rect.t + rect.b) / 2 : (rect.l + rect.r) / 2
+                    return center >= group.span.start && center < group.span.end
+                }
+            }
+        }
+        ; Some layouts expose no underline. Use the browser's accessible
+        ; membership label where available and keep unknown tabs selectable.
+        return InStr(tab.title, "Part of unnamed ") && RegExMatch(group.title, "i)^unnamed\b")
+            || InStr(tab.title, "Part of group " group.title)
+            || InStr(tab.title, "Part of tab group " group.title)
+    }
+
+    LoadGroup(session, window, group) {
+        group.status := "Group tabs unavailable"
+        if group.collapsedInBrowser {
+            session.openedGroups[group.id] := {window: window, group: group}
+            if !this.SetBrowserGroupState(window, group, 1)
+                return
+            group.collapsedInBrowser := false
+        }
+        ; Give the tab strip time to expose the new children and finish layout.
+        Loop 4 {
+            snapshot := this.ReadTabs(window)
+            if snapshot.groups.Has(group.id) && snapshot.groups[group.id].children.Length {
+                if this.gdiplusToken
+                    try this.CaptureBrowserFavicons(window, snapshot.tabs)
+                group.children := snapshot.groups[group.id].children
+                session.tabs := snapshot.tabs
+                group.status := ""
+                return
+            }
+            Sleep(50)
+        }
+    }
+
+    SetBrowserGroupState(window, group, state) {
+        try {
+            if WinGetPID(window.hwnd) != window.pid
+                return false
+            if group.element.ExpandCollapseExpandCollapseState = state
+                return true
+            if group.element.IsOffscreen
+                return false
+            rect := group.element.BoundingRectangle
+            WinGetClientPos(&left, &top, &width, &height, window.hwnd)
+            x := (rect.l + rect.r) // 2 - left
+            y := (rect.t + rect.b) // 2 - top
+            if x < 0 || x >= width || y < 0 || y >= height || rect.r <= rect.l || rect.b <= rect.t
+                return false
+            ; Both browser headers respond to a click. Address the browser
+            ; window directly so the picker can stay up and the cursor stays put.
+            ControlClick("x" x " y" y, window.hwnd,, "Left", 1, "NA Pos")
+            Loop 6 {
+                if group.element.ExpandCollapseExpandCollapseState = state
+                    return true
+                Sleep(30)
+            }
+        }
+        return false
+    }
+
+    RestoreBrowserGroups(session, keepGroup := "") {
+        for id, entry in session.openedGroups {
+            if id != keepGroup
+                this.SetBrowserGroupState(entry.window, entry.group, 0)
+        }
+        session.openedGroups.Clear()
+    }
+
     CaptureBrowserFavicons(window, tabs) {
-        if !WinActive(window.hwnd) || DllCall("IsHungAppWindow", "Ptr", window.hwnd)
+        if tabs.Length < 2 || !WinActive(window.hwnd) || DllCall("IsHungAppWindow", "Ptr", window.hwnd)
             return
         WinGetPos(&left, &top, &width, &height, window.hwnd)
         dpi := DllCall("GetDpiForWindow", "Ptr", window.hwnd, "UInt")
@@ -1157,13 +1357,22 @@ class WindowSwitcher {
         return found ? {pixels: result, size: size} : 0
     }
 
-    FindTabElements(root, window) {
+    FindTabElements(root, window, includeUnderlines) {
         switch window.tabProvider {
-            case "edge":
-                return root.FindElements({Type: "TabItem", ClassName: "EdgeTab"})
-            case "chrome":
-                strip := root.ElementExist({Type: "Tab", ClassName: "TabContainer"})
-                return strip ? strip.FindElements({Type: "TabItem", ClassName: "Tab"}) : []
+            case "edge", "chrome":
+                edge := window.tabProvider = "edge"
+                conditions := [{Type: "TabItem", ClassName: edge ? "EdgeTab" : "Tab"},
+                    {ClassName: edge ? "EdgeTitleContainerView" : "TabGroupHeader", IsExpandCollapsePatternAvailable: true}]
+                if includeUnderlines
+                    conditions.Push({ClassName: edge ? "EdgeTabGroupUnderline" : "TabGroupUnderline"})
+                if edge
+                    return root.FindElements(conditions)
+                strip := root.ElementExist([{ClassName: "TabStrip"}, {ClassName: "VerticalTabStripRegionView"}])
+                if !strip
+                    return []
+                conditions.Push({Type: "TabItem", ClassName: "TabView"},
+                    {ClassName: "TabGroupHeaderView", IsExpandCollapsePatternAvailable: true})
+                return strip.FindElements(conditions)
             case "explorer":
                 strip := root.ElementExist({Type: "Tab", AutomationId: "TabView"})
                 return strip ? strip.FindElements({Type: "TabItem"}) : []
@@ -1197,17 +1406,38 @@ class WindowSwitcher {
     }
 
     ResetTabs(session) {
+        if session.openedGroups.Count {
+            this.RestorePreviewedTab()
+            this.RestoreBrowserGroups(session)
+        }
         session.query := 0
         session.tabs := []
-        session.tabIndex := 0
+        session.tabNodes := []
+        session.selectedNode := 0
         session.expandedIndex := 0
         session.status := ""
     }
 
     Collapse() {
+        Critical
         session := this.session
         if !session || session.canceled || session.index != session.expandedIndex
             return
+        node := session.selectedNode
+        if node && node.HasOwnProp("children") && node.expanded {
+            node.expanded := false
+            this.Render(session)
+            return
+        }
+        if node {
+            parent := this.rowDetails[session.selectedRow].parent
+            if parent {
+                parent.expanded := false
+                session.selectedNode := parent
+                this.Render(session)
+                return
+            }
+        }
         this.ResetTabs(session)
         if session.shown
             this.Render(session)
@@ -1268,7 +1498,9 @@ class WindowSwitcher {
     Commit(session) {
         this.Hide()
         window := session.windows[session.index]
-        this.RestorePreviewedTab(session.tabIndex ? window.hwnd : 0)
+        element := this.SelectedTab(session)
+        this.RestorePreviewedTab(element ? window.hwnd : 0)
+        keepGroup := ""
         try {
             if WinGetPID(window.hwnd) != window.pid
                 return
@@ -1276,15 +1508,19 @@ class WindowSwitcher {
                 WinActivate(window.hwnd)
             if WinActive(window.hwnd)
                 this.Remember(window.hwnd)
-            if session.tabIndex && WinWaitActive(window.hwnd,, 0.5) {
+            if element && WinWaitActive(window.hwnd,, 0.5) {
                 ; Keep the element from the snapshot. A closed tab can fail
                 ; here, in which case the selected window stays activated.
-                element := session.tabs[session.tabIndex].element
-                element.GetCurrentPattern("SelectionItem").Select()
+                try element.GetCurrentPattern("SelectionItem").Select()
+                catch
+                    this.SelectPreviewTab(element)
+                if element.SelectionItemIsSelected
+                    keepGroup := session.selectedNode.group
             }
         } catch Error {
             ; The window or tab can disappear while the picker is open.
         } finally {
+            this.RestoreBrowserGroups(session, keepGroup)
             this.RestoreMinimizedWindows(session, window.hwnd)
             this.RestoreWindowOrder(session, WinActive(window.hwnd) ? window.hwnd : 0)
         }
