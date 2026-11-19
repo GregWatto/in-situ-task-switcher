@@ -1,0 +1,8 @@
+# Local and compiled output
+/dist/
+/build/
+*.exe
+*.lnk
+*.log
+Thumbs.db
+Desktop.ini
