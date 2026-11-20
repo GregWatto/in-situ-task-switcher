@@ -55,6 +55,7 @@ class WindowSwitcher {
     __New() {
         this.session := 0
         this.releaseMonitor := ObjBindMethod(this, "CheckAltRelease")
+        this.previewTimer := ObjBindMethod(this, "RefreshPreview")
         this.tabDiscoveryTimer := ObjBindMethod(this, "DiscoverTabs")
         this.recent := []
         this.thumbnail := 0
@@ -342,7 +343,7 @@ class WindowSwitcher {
             if row.marker {
                 DllCall("gdi32\SetTextColor", "Ptr", dc, "UInt", this.ColorRef(this.theme.muted))
                 this.DrawRowText(dc, row.marker, markerLeft, top, right, bottom)
-                if row.window && !row.window.hasTabGroups
+                if row.window && row.window.tabCount >= 0 && !row.window.hasTabGroups
                     this.DrawRowText(dc, row.window.tabCount, left + Round(30 * scale), top,
                         left + Round(62 * scale), bottom)
             }
@@ -689,11 +690,18 @@ class WindowSwitcher {
         session := this.session
         if session.canceled
             return
+        hadExpansion := session.expandedIndex != 0
         this.ResetTabs(session)
         count := session.windows.Length
         session.index := Mod(session.index - 1 + direction + count, count) + 1
-        if session.shown
-            this.Render(session)
+        if session.shown {
+            if hadExpansion
+                this.Render(session)
+            else {
+                session.selectedRow := session.index
+                this.UpdateSelection(session)
+            }
+        }
     }
 
     Show(session) {
@@ -716,7 +724,7 @@ class WindowSwitcher {
             front := this.backdrop ? this.backdrop : this.overlay
             this.ShowBehind(this.shadow.window, front, left - padding, top - padding)
         }
-        this.UpdatePreview(session)
+        this.SchedulePreview()
     }
 
     ShowBehind(window, front, left, top) {
@@ -726,6 +734,7 @@ class WindowSwitcher {
     }
 
     Hide() {
+        SetTimer(this.previewTimer, 0)
         SetTimer(this.tabDiscoveryTimer, 0)
         this.overlay.Hide()
         if this.backdrop
@@ -744,7 +753,7 @@ class WindowSwitcher {
         for index, window in session.windows {
             expanded := index = session.expandedIndex
             indicator := ""
-            if this.CanExpandTabs(window)
+            if this.CanExpandTabs(window) || (window.tabCount < 0 && window.tabProvider)
                 indicator := this.Chevron(expanded && (session.tabNodes.Length || session.query))
             labels.Push(indicator " " window.title)
             details.Push({title: window.title, marker: indicator, markerOffset: 16, window: window,
@@ -785,7 +794,7 @@ class WindowSwitcher {
     UpdateSelection(session, refreshPreview := true) {
         this.rows.Choose(session.selectedRow)
         if refreshPreview && DllCall("IsWindowVisible", "Ptr", this.overlay.Hwnd)
-            this.UpdatePreview(session)
+            this.SchedulePreview()
         window := session.windows[session.index]
         node := session.selectedNode
         hint := "Click or Up / Down: select     "
@@ -805,9 +814,21 @@ class WindowSwitcher {
         this.hint.Text := hint "Release Alt: keep selection     Esc: cancel"
     }
 
-    UpdatePreview(session) {
-        ; Finish switching before Alt release or Esc can clean up the session.
+    SchedulePreview() {
+        ; Move the highlight now and skip live previews of rows passed in quick succession.
+        SetTimer(this.tabDiscoveryTimer, 0)
+        SetTimer(this.previewTimer, -100)
+    }
+
+    RefreshPreview() {
         Critical
+        session := this.session
+        if session && session.shown && !session.canceled
+            this.UpdatePreview(session)
+    }
+
+    UpdatePreview(session) {
+        ; Call from a critical thread so Alt release can't interrupt preview cleanup.
         window := session.windows[session.index]
         node := session.selectedNode
         element := this.SelectedTab(session)
@@ -834,8 +855,8 @@ class WindowSwitcher {
         else if group
             this.RestorePreviewedTab()
 
-        if window.tabCount < 0
-            SetTimer(this.tabDiscoveryTimer, -35)
+        if window.tabCount < 0 && !session.query
+            SetTimer(this.tabDiscoveryTimer, -350)
         if this.previewWindow = window.hwnd
             return
         this.ClearThumbnail()
@@ -1064,8 +1085,15 @@ class WindowSwitcher {
     }
 
     LoadTabs(session, query, window) {
+        Critical
         if this.session != session || session.query != query || session.canceled
             return
+        if session.windows[session.index] = window && !WinActive(window.hwnd) {
+            ; Explicit expansion needs the foreground tab strip for favicon capture.
+            SetTimer(this.previewTimer, 0)
+            this.UpdatePreview(session)
+        }
+        Critical "Off"
         snapshot := this.ReadTabs(window)
         if this.session = session && session.query = query && !session.canceled && snapshot.tabs.Length > 1
             && this.gdiplusToken && (window.tabProvider = "chrome" || window.tabProvider = "edge")
@@ -1084,23 +1112,10 @@ class WindowSwitcher {
 
     DiscoverTabs() {
         session := this.session
-        if !session || !session.shown || session.canceled
+        if !session || !session.shown || session.canceled || session.query
             return
-        if session.query {
-            SetTimer(this.tabDiscoveryTimer, -35)
-            return
-        }
         window := session.windows[session.index]
-        if !this.CanDiscoverTabs(window) {
-            window := 0
-            for candidate in session.windows {
-                if this.CanDiscoverTabs(candidate) {
-                    window := candidate
-                    break
-                }
-            }
-        }
-        if !window
+        if !this.CanDiscoverTabs(window)
             return
 
         elements := this.ReadTabElements(window)
@@ -1115,16 +1130,14 @@ class WindowSwitcher {
             }
         }
         Critical
-        if this.session != session || session.canceled
+        if this.session != session || session.canceled || session.query
+            || session.windows[session.index] != window
             return
         if window.tabCount < 0 {
             window.tabCount := count
             window.hasTabGroups := hasGroups
-            if this.CanExpandTabs(window) || window = session.windows[session.index]
-                this.Render(session, false)
+            this.Render(session, false)
         }
-        ; Yield between windows so quick switching never waits for a full scan.
-        SetTimer(this.tabDiscoveryTimer, -35)
     }
 
     CanDiscoverTabs(window) {

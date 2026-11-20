@@ -54,7 +54,7 @@ Moving off a previewed tab restores the tab that was active before previewing it
 
 Microsoft Edge and Google Chrome show tab groups under their browser window, with member tabs nested inside. Highlight a group title to preview its first tab, even when the group's list is collapsed. If the picker opens a browser group for the preview, it collapses the group again when you move away from its title. Explicitly expanded groups stay open while you browse their tabs. The picker restores their original collapsed state when you close the window's tab list or leave the picker, unless you commit a tab in the group with **Alt**. Group availability depends on what the browser exposes through Windows UI Automation. Site icons appear when the picker can read them from the visible horizontal tab strip.
 
-File Explorer has dedicated tab detection. Other apps can expose tabs through Windows UI Automation. The picker shows a chevron when it detects at least two tabs or a tab group. A window remains selectable when its tabs are unavailable.
+Edge, Chrome, and File Explorer show a chevron as soon as the picker opens. The picker confirms the tab count when you highlight or expand the window and keeps the chevron when it finds multiple tabs or a tab group. Other apps can expose tabs through Windows UI Automation and gain a chevron when the picker detects them. A window remains selectable when its tabs are unavailable.
 
 The picker reads the Windows app theme and transparency setting at launch. Restart it to apply changes.
 
