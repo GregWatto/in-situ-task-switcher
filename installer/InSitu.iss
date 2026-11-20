@@ -40,6 +40,7 @@ VersionInfoVersion={#AppVersion}
 Source: "..\WindowSwitcher.ahk"; DestDir: "{app}"
 Source: "..\DesktopSwitcher.ahk"; DestDir: "{app}"
 Source: "..\UpdateChecker.ahk"; DestDir: "{app}"
+Source: "Install-Update.ps1"; DestDir: "{app}"
 Source: "..\Lib\UIA.ahk"; DestDir: "{app}\Lib"
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"

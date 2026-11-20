@@ -1,54 +1,53 @@
-CheckForUpdates(*) {
+ScheduleAutomaticUpdates() {
+    if !ReadInstalledVersion()
+        return
+
+    SetTimer(CheckForAutomaticUpdates, 6 * 60 * 60 * 1000)
+    ; A failed install can also restart the app. Wait for the regular check before retrying.
+    if !A_Args.Length || A_Args[A_Args.Length] != "--after-update"
+        SetTimer(() => CheckForAutomaticUpdates(), -30000)
+}
+
+CheckForAutomaticUpdates() {
+    CheckForUpdates(false)
+}
+
+CheckForUpdates(manual := true) {
+    global UseAltTab
     static checking := false
-    static releases := "https://github.com/GregWatto/in-situ-task-switcher/releases"
+    static releases := "https://github.com/GregWatto/in-situ-task-switcher/releases/latest"
 
     if checking
         return
 
+    installed := ReadInstalledVersion()
+    if !installed {
+        if manual && MsgBox("This copy has no installer version. Open the latest release page?",
+            "In Situ updates", "YesNo Iconi") = "Yes"
+            Run(releases)
+        return
+    }
+
     checking := true
     try {
-        installed := IniRead(A_ScriptDir "\InSitu-version.ini", "In Situ", "Version", "")
-        if !RegExMatch(installed, "^\d+\.\d+\.\d+$") {
-            if MsgBox("This copy has no installer version. Open the latest release page?",
-                "In Situ updates", "YesNo Iconi") = "Yes"
-                Run(releases "/latest")
-            return
-        }
-
-        request := ComObject("WinHttp.WinHttpRequest.5.1")
-        request.SetTimeouts(3000, 3000, 3000, 3000)
-        request.Open("HEAD", releases "/latest", true)
-        request.Option[6] := false ; WinHttpRequestOption_EnableRedirects
-        request.Send()
-
-        deadline := A_TickCount + 10000
-        while !request.WaitForResponse(0) {
-            if A_TickCount >= deadline {
-                request.Abort()
-                throw Error("Release check timed out.")
-            }
-            Sleep(50)
-        }
-
-        if request.Status != 302
-            throw Error("Unexpected release response.")
-        location := request.GetResponseHeader("Location")
-        if !RegExMatch(location, "i)^\Q" releases "\E/tag/v(\d+\.\d+\.\d+)$", &release)
-            throw Error("Unexpected release tag.")
-
-        latest := release[1]
-        if VerCompare(latest, installed) > 0 {
-            if MsgBox("In Situ v" latest " is available. You have v" installed ".`n`nOpen the release page?",
-                "In Situ updates", "YesNo Iconi") = "Yes"
-                Run(releases "/tag/v" latest)
-        } else {
+        powershell := A_WinDir "\System32\WindowsPowerShell\v1.0\powershell.exe"
+        mode := UseAltTab ? "AltTab" : "Default"
+        args := Format('-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File "{}" -InstalledVersion {} -AppProcessId {} -Mode {}',
+            A_ScriptDir "\Install-Update.ps1", installed, ProcessExist(), mode)
+        if RunWait('"' powershell '" ' args, , "Hide") != 0
+            throw Error("Update failed.")
+        if manual
             MsgBox("In Situ v" installed " is up to date.", "In Situ updates", "Iconi")
-        }
     } catch {
-        if MsgBox("Could not check for updates. Open the release page in your browser?",
+        if manual && MsgBox("Could not complete the update check. Open the release page in your browser?",
             "In Situ updates", "YesNo Icon!") = "Yes"
-            try Run(releases "/latest")
+            try Run(releases)
     } finally {
         checking := false
     }
+}
+
+ReadInstalledVersion() {
+    version := IniRead(A_ScriptDir "\InSitu-version.ini", "In Situ", "Version", "")
+    return RegExMatch(version, "^\d+\.\d+\.\d+$") ? version : ""
 }

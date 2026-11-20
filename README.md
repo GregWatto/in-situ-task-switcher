@@ -15,7 +15,7 @@ Windows 11’s built-in **Alt+Tab** and **Win+Tab** show windows as separate thu
 
 - Press **Alt+F12** for the task picker and **Win+Tab** for the desktop picker. Create at least two virtual desktops in Windows Task View to try desktop switching.
 - Open **In Situ (Alt+Tab mode)** from the Start menu to use the task picker on **Alt+Tab** too. Open **In Situ** again to return to the default shortcut.
-- Right-click the tray icon and choose **Check for updates**. When a new version is available, open its GitHub release page and run the new installer under the same Windows account. If you have v0.1.0, use the download link above for your first upgrade.
+- In Situ checks for updates shortly after launch and every six hours while it runs. It installs newer releases in the background and reopens in the same shortcut mode. Right-click the tray icon and choose **Check for updates** to check immediately. If your installed copy only opens the release page, run the latest installer once to enable automatic updates.
 - Choose **Exit** from the tray icon to stop both pickers. To remove the app, uninstall **In Situ - Task Switcher** from **Settings → Apps → Installed apps**.
 
 ### Run from source
@@ -23,6 +23,8 @@ Windows 11’s built-in **Alt+Tab** and **Win+Tab** show windows as separate thu
 1. Install [AutoHotkey v2](https://github.com/AutoHotkey/AutoHotkey/releases) on Windows 11.
 2. [Download the ZIP](https://github.com/GregWatto/in-situ-task-switcher/archive/refs/heads/main.zip) and extract it. You can also clone the repository with `git clone https://github.com/GregWatto/in-situ-task-switcher.git`.
 3. Double-click `WindowSwitcher.ahk` to start both switchers. Keep `DesktopSwitcher.ahk`, `UpdateChecker.ahk`, and the `Lib` folder alongside it.
+
+Update a source checkout with `git pull`, or download a fresh ZIP.
 
 By default, Windows still handles **Alt+Tab**. To enable the window picker on **Alt+Tab** too, run this from the extracted folder in PowerShell. Adjust the executable path for a portable or custom AutoHotkey installation.
 
